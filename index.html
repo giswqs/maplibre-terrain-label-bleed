@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MapLibre terrain: basemap labels bleed over an overlying raster</title>
+  <script src="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.js"></script>
+  <link href="https://unpkg.com/maplibre-gl@5.24.0/dist/maplibre-gl.css" rel="stylesheet" />
+  <style>
+    html, body, #map { margin: 0; height: 100%; }
+    #panel {
+      position: absolute; top: 12px; left: 12px; z-index: 2; width: 320px;
+      background: rgba(255,255,255,0.94); border-radius: 8px; padding: 12px 14px;
+      font: 13px/1.45 system-ui, sans-serif; box-shadow: 0 1px 6px rgba(0,0,0,0.25);
+    }
+    #panel h1 { font-size: 14px; margin: 0 0 6px; }
+    #panel p { margin: 6px 0; }
+    #panel button {
+      display: inline-block; margin: 4px 6px 4px 0; padding: 6px 10px;
+      border: 1px solid #bbb; border-radius: 6px; background: #f5f5f5; cursor: pointer; font-size: 13px;
+    }
+    #panel button:hover { background: #e8e8e8; }
+    #state { font-weight: 600; }
+    .hint { color: #555; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <div id="panel">
+    <h1>Terrain bug: basemap labels bleed over an overlying raster</h1>
+    <p>
+      An opaque raster layer (Esri Wayback imagery, 2014-02-20) is added
+      <em>above</em> every layer of a vector basemap (OpenFreeMap Liberty),
+      with <code>raster-dem</code> terrain enabled. View ~zoom&nbsp;17.
+    </p>
+    <p>
+      Terrain: <span id="state">on</span><br />
+      <button id="terrain">Toggle terrain</button>
+      <button id="imagery">Toggle imagery</button>
+      <button id="flyto">Fly to White House</button>
+    </p>
+    <p class="hint">
+      With terrain <b>ON</b>, the basemap's symbol labels (e.g. "White House",
+      "The West Wing", "West Colonnade") render <b>on top of</b> the imagery,
+      even though the imagery layer sits above them in the style. Toggle terrain
+      <b>OFF</b> and the imagery correctly hides the labels. The labels only
+      bleed at high zoom (~z16+).
+    </p>
+  </div>
+
+  <script>
+    const WAYBACK_2014_02_20 =
+      'https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/10/{z}/{y}/{x}';
+
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: 'https://tiles.openfreemap.org/styles/liberty',
+      center: [-77.0365, 38.8977], // White House, Washington DC
+      zoom: 17.2,
+      pitch: 5,
+      hash: true
+    });
+    map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }));
+
+    let terrainOn = true;
+    const setTerrainState = () => {
+      map.setTerrain(terrainOn ? { source: 'dem', exaggeration: 1 } : null);
+      document.getElementById('state').textContent = terrainOn ? 'on' : 'off';
+    };
+
+    map.on('load', () => {
+      map.addSource('dem', {
+        type: 'raster-dem',
+        tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+        tileSize: 256, maxzoom: 15, encoding: 'terrarium'
+      });
+      map.addSource('imagery', {
+        type: 'raster',
+        tiles: [WAYBACK_2014_02_20],
+        tileSize: 256, maxzoom: 19,
+        attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics'
+      });
+      // Appended with no beforeId -> placed at the very top of the style,
+      // i.e. ABOVE every basemap fill/line/symbol layer.
+      map.addLayer({ id: 'imagery', type: 'raster', source: 'imagery' });
+      setTerrainState();
+    });
+
+    document.getElementById('terrain').onclick = () => { terrainOn = !terrainOn; setTerrainState(); };
+    document.getElementById('imagery').onclick = () => {
+      const v = map.getLayoutProperty('imagery', 'visibility');
+      map.setLayoutProperty('imagery', 'visibility', v === 'none' ? 'visible' : 'none');
+    };
+    document.getElementById('flyto').onclick = () => {
+      map.jumpTo({ center: [-77.0365, 38.8977], zoom: 17.2, pitch: 5, bearing: 0 });
+    };
+  </script>
+</body>
+</html>
