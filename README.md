@@ -60,6 +60,9 @@ python3 -m http.server 8000
 
 ## Context
 
+- Upstream issue: [maplibre/maplibre-gl-js#7828](https://github.com/maplibre/maplibre-gl-js/issues/7828)
+- Related: [maplibre/maplibre-gl-js#4908](https://github.com/maplibre/maplibre-gl-js/issues/4908) (labels lifting off the terrain surface at high zoom)
+
 Originally surfaced as [opengeos/GeoLibre#781](https://github.com/opengeos/GeoLibre/issues/781).
 GeoLibre's layer ordering is correct (the raster is placed above the basemap
 symbols); the bleed comes from the MapLibre terrain rendering described above.
